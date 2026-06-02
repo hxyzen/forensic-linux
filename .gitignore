@@ -1,0 +1,7 @@
+build/
+*.iso
+*.log
+*.tar.xz
+*.tar.bz2
+*.zip
+*.gz
