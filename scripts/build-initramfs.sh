@@ -43,7 +43,7 @@ build_busybox() {
     cd busybox-${BUSYBOX_VERSION}
 
     cp "$CONFIGS/busybox.config" .config
-    make olddefconfig
+    yes "" | make oldconfig
     info "Compiling BusyBox (static)..."
     make -j$(nproc) 2>&1 | tail -3
     make install 2>&1 | tail -3
