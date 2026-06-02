@@ -1,0 +1,86 @@
+name: Build Forensic Linux ISO
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      distro_name:
+        description: 'Distribution name (default: ForensicOS)'
+        required: false
+        default: 'ForensicOS'
+      version:
+        description: 'Version (default: 1.0)'
+        required: false
+        default: '1.0'
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            debootstrap \
+            wget \
+            xorriso \
+            mtools \
+            grub-pc-bin \
+            squashfs-tools \
+            build-essential \
+            bc \
+            bison \
+            flex \
+            libssl-dev \
+            libncurses-dev \
+            cpio \
+            python3-pip \
+            python3-dev \
+            curl \
+            git
+
+      - name: Build kernel config check
+        run: |
+          if [ ! -f configs/kernel.config ]; then
+            echo "ERROR: kernel.config not found!"
+            exit 1
+          fi
+          echo "Kernel config found OK"
+
+      - name: Build ISO
+        run: |
+          sudo bash build.sh iso 2>&1 | tee build.log
+
+      - name: List output
+        run: |
+          echo "=== Build artifacts ==="
+          ls -lh *.iso 2>/dev/null || ls -lh build/*.iso 2>/dev/null || echo "No ISO found"
+          echo "=== Last 50 lines of build log ==="
+          tail -50 build.log
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Forensic-Linux-ISO
+          path: |
+            *.iso
+            build/*.iso
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload build log
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build-Log
+          path: build.log
+          retention-days: 30
