@@ -29,49 +29,15 @@ err()   { echo -e "${RED}[ERR]${NC} $1"; exit 1; }
 #=============================================================================
 # Stage 1: Build custom Linux kernel
 #=============================================================================
-KERNEL_VERSION="${KERNEL_VERSION:-6.12}"
-KERNEL_MAJOR="v6.x"
-KERNEL_TAR="linux-${KERNEL_VERSION}.tar.xz"
-KERNEL_DIR="linux-${KERNEL_VERSION}"
-
 stage_kernel() {
-    info "=== Stage 1: Building Linux kernel ${KERNEL_VERSION} ==="
-    mkdir -p "$BUILD/kernel"
-    cd "$BUILD/kernel"
-
-    if [ ! -f "$KERNEL_TAR" ]; then
-        info "Downloading Linux kernel ${KERNEL_VERSION}..."
-        wget -q --show-progress "https://cdn.kernel.org/pub/linux/kernel/${KERNEL_MAJOR}/${KERNEL_TAR}"
-    fi
-
-    if [ -d "$KERNEL_DIR" ]; then
-        info "Cleaning previous kernel build..."
-        rm -rf "$KERNEL_DIR"
-    fi
-    info "Extracting kernel..."
-    tar xf "$KERNEL_TAR"
-
-    cd "$KERNEL_DIR"
+    info "=== Stage 1: Installing distribution kernel ==="
+    # Use distro kernel for now (custom kernel build will be added later)
+    mkdir -p "$ROOTFS"
     
-    # Clean any stale state from previous failed builds
-    make mrproper 2>/dev/null || true
-    info "Applying kernel configuration..."
-    cp "$CONFIGS/kernel.config" .config
-    # Fix any stale/invalid options and accept defaults for new ones
-    make olddefconfig 2>&1 | tail -3
-
-    info "Compiling kernel (this will take time)..."
-    make -j$(nproc) bzImage 2>&1 | tail -5
-    
-    cp "arch/x86_64/boot/bzImage" "$BUILD/kernel.bzImage"
-    ok "Kernel built: arch/x86_64/boot/bzImage"
-
-    # Build kernel modules
-    info "Building kernel modules..."
-    make -j$(nproc) modules 2>&1 | tail -3
-    mkdir -p "$ROOTFS/lib/modules"
-    make INSTALL_MOD_PATH="$ROOTFS" modules_install 2>&1 | tail -3
-    ok "Kernel modules installed"
+    # Install kernel packages into rootfs via debootstrap stage
+    # This ensures we have a working kernel + modules + initrd
+    info "Distribution kernel will be installed during debootstrap stage"
+    ok "Kernel stage: will use distro kernel"
 }
 
 #=============================================================================
@@ -89,7 +55,8 @@ stage_rootfs() {
             --include=systemd,systemd-sysv,systemd-resolved,bash,coreutils,busybox,\
 util-linux,sysvinit-utils,udev,kmod,kmod,iproute2,iputils-ping,net-tools,\
 wget,ca-certificates,curl,gpg,apt-utils,whiptail,locales,kbd,\
-console-setup,linux-firmware,network-manager \
+console-setup,linux-image-amd64,linux-headers-amd64,initramfs-tools,\
+linux-firmware,network-manager,firmware-linux,firmware-linux-nonfree \
             bookworm "$ROOTFS" http://deb.debian.org/debian/
         ok "Base system bootstrapped"
     fi
@@ -286,19 +253,26 @@ stage_iso() {
     mkdir -p "$ISO_DIR/boot/grub"
     mkdir -p "$ISO_DIR/live"
 
-    # Copy kernel and initrd
-    cp "$BUILD/kernel.bzImage" "$ISO_DIR/boot/kernel.bzImage"
+    # Copy kernel and initrd from rootfs
+    KERNEL_FILE=$(ls "$ROOTFS/boot/vmlinuz-"* 2>/dev/null | head -1)
+    INITRD_FILE=$(ls "$ROOTFS/boot/initrd.img-"* 2>/dev/null | head -1)
+    
+    if [ -n "$KERNEL_FILE" ]; then
+        cp "$KERNEL_FILE" "$ISO_DIR/boot/kernel.bzImage"
+        ok "Kernel: $(basename $KERNEL_FILE)"
+    else
+        err "No kernel found in rootfs!"
+    fi
 
-    # Use custom initramfs
+    # Use custom initramfs if available, otherwise Debian's initrd
     if [ -f "$BUILD/initramfs.cpio.gz" ]; then
         info "Using custom initramfs..."
         cp "$BUILD/initramfs.cpio.gz" "$ISO_DIR/boot/initrd.gz"
+    elif [ -n "$INITRD_FILE" ]; then
+        info "Using distribution initrd..."
+        cp "$INITRD_FILE" "$ISO_DIR/boot/initrd.gz"
     else
-        info "Custom initramfs not found, falling back to Debian initrd..."
-        mkdir -p "$BUILD/initrd"
-        cd "$BUILD/initrd"
-        zcat "$ROOTFS/boot/initrd.img-"* 2>/dev/null | cpio -idm 2>/dev/null || true
-        find . | cpio -H newc -o | gzip -9 > "$ISO_DIR/boot/initrd.gz" 2>/dev/null
+        err "No initrd found!"
     fi
     ok "Initrd ready"
 
