@@ -29,22 +29,27 @@ err()   { echo -e "${RED}[ERR]${NC} $1"; exit 1; }
 #=============================================================================
 # Stage 1: Build custom Linux kernel
 #=============================================================================
+KERNEL_VERSION="${KERNEL_VERSION:-6.12}"
+KERNEL_MAJOR="v6.x"
+KERNEL_TAR="linux-${KERNEL_VERSION}.tar.xz"
+KERNEL_DIR="linux-${KERNEL_VERSION}"
+
 stage_kernel() {
-    info "=== Stage 1: Building Linux kernel ==="
+    info "=== Stage 1: Building Linux kernel ${KERNEL_VERSION} ==="
     mkdir -p "$BUILD/kernel"
     cd "$BUILD/kernel"
 
-    if [ ! -f linux-*.tar.xz ]; then
-        info "Downloading Linux kernel..."
-        wget -q --show-progress https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.tar.xz
+    if [ ! -f "$KERNEL_TAR" ]; then
+        info "Downloading Linux kernel ${KERNEL_VERSION}..."
+        wget -q --show-progress "https://cdn.kernel.org/pub/linux/kernel/${KERNEL_MAJOR}/${KERNEL_TAR}"
     fi
 
-    if [ ! -d linux-* ]; then
+    if [ ! -d "$KERNEL_DIR" ]; then
         info "Extracting kernel..."
-        tar xf linux-*.tar.xz
+        tar xf "$KERNEL_TAR"
     fi
 
-    cd linux-*
+    cd "$KERNEL_DIR"
     
     if [ ! -f .config ]; then
         info "Applying kernel configuration..."
@@ -54,7 +59,7 @@ stage_kernel() {
     info "Compiling kernel (this will take time)..."
     make -j$(nproc) bzImage 2>&1 | tail -5
     
-    cp arch/x86_64/boot/bzImage "$BUILD/kernel.bzImage"
+    cp "arch/x86_64/boot/bzImage" "$BUILD/kernel.bzImage"
     ok "Kernel built: arch/x86_64/boot/bzImage"
 
     # Build kernel modules
