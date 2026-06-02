@@ -44,17 +44,21 @@ stage_kernel() {
         wget -q --show-progress "https://cdn.kernel.org/pub/linux/kernel/${KERNEL_MAJOR}/${KERNEL_TAR}"
     fi
 
-    if [ ! -d "$KERNEL_DIR" ]; then
-        info "Extracting kernel..."
-        tar xf "$KERNEL_TAR"
+    if [ -d "$KERNEL_DIR" ]; then
+        info "Cleaning previous kernel build..."
+        rm -rf "$KERNEL_DIR"
     fi
+    info "Extracting kernel..."
+    tar xf "$KERNEL_TAR"
 
     cd "$KERNEL_DIR"
     
-    if [ ! -f .config ]; then
-        info "Applying kernel configuration..."
-        cp "$CONFIGS/kernel.config" .config
-    fi
+    # Clean any stale state from previous failed builds
+    make mrproper 2>/dev/null || true
+    info "Applying kernel configuration..."
+    cp "$CONFIGS/kernel.config" .config
+    # Fix any stale/invalid options and accept defaults for new ones
+    make olddefconfig 2>&1 | tail -3
 
     info "Compiling kernel (this will take time)..."
     make -j$(nproc) bzImage 2>&1 | tail -5
