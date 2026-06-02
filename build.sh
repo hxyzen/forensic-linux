@@ -51,7 +51,7 @@ stage_rootfs() {
 
     if [ ! -f "$ROOTFS/bin/bash" ]; then
         info "Bootstrapping Debian base system..."
-        debootstrap --arch=$ARCH --variant=minimal \
+        debootstrap --arch=$ARCH \
             --include=systemd,systemd-sysv,systemd-resolved,bash,coreutils,busybox,\
 util-linux,sysvinit-utils,udev,kmod,kmod,iproute2,iputils-ping,net-tools,\
 wget,ca-certificates,curl,gpg,apt-utils,whiptail,locales,kbd,\
