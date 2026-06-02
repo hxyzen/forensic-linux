@@ -55,7 +55,7 @@ stage_rootfs() {
 bash,coreutils,busybox,util-linux,sysvinit-utils,udev,kmod,\
 iproute2,iputils-ping,net-tools,wget,ca-certificates,curl,gpg,\
 apt-utils,whiptail,locales,kbd,console-setup,\
-linux-image-amd64,initramfs-tools,network-manager \
+linux-image-amd64,initramfs-tools \
             bookworm "$ROOTFS" http://deb.debian.org/debian/
         ok "Base system bootstrapped"
     fi
@@ -123,6 +123,7 @@ stage_tools() {
         tshark \
         nmap \
         netcat-openbsd \
+        network-manager \
         volatility3 \
         yara \
         bulk-extractor \
