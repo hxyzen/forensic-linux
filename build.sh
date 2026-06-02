@@ -51,12 +51,11 @@ stage_rootfs() {
 
     if [ ! -f "$ROOTFS/bin/bash" ]; then
         info "Bootstrapping Debian base system..."
-        debootstrap --arch=$ARCH \
-            --include=systemd,systemd-sysv,systemd-resolved,bash,coreutils,busybox,\
-util-linux,sysvinit-utils,udev,kmod,kmod,iproute2,iputils-ping,net-tools,\
-wget,ca-certificates,curl,gpg,apt-utils,whiptail,locales,kbd,\
-console-setup,linux-image-amd64,linux-headers-amd64,initramfs-tools,\
-linux-firmware,network-manager,firmware-linux,firmware-linux-nonfree \
+        debootstrap --arch=$ARCH --include=systemd,systemd-sysv,systemd-resolved,\
+bash,coreutils,busybox,util-linux,sysvinit-utils,udev,kmod,\
+iproute2,iputils-ping,net-tools,wget,ca-certificates,curl,gpg,\
+apt-utils,whiptail,locales,kbd,console-setup,\
+linux-image-amd64,initramfs-tools,network-manager \
             bookworm "$ROOTFS" http://deb.debian.org/debian/
         ok "Base system bootstrapped"
     fi
